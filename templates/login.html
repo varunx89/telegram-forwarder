@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}Login • Telegram Forwarder{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+    <div class="card auth-card">
+        <div class="auth-header">
+            <div class="auth-lock-icon">🔒</div>
+            <h2>Admin Dashboard Login</h2>
+            <p class="text-muted">Enter your configured ADMIN_PASSWORD to access the service and manage your Telegram session.</p>
+        </div>
+
+        {% if error %}
+        <div class="alert alert-danger">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <form method="POST" action="/login" class="auth-form">
+            <div class="form-group">
+                <label for="password">Admin Password</label>
+                <input 
+                    type="password" 
+                    id="password" 
+                    name="password" 
+                    class="form-input" 
+                    placeholder="Enter your admin password" 
+                    required 
+                    autofocus
+                >
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Unlock Dashboard</button>
+        </form>
+
+        <div class="auth-note">
+            <small class="text-muted">Protected by constant-time verification & encrypted session cookie.</small>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: telegram-forwarder
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: TG_API_ID
+        sync: false
+      - key: TG_API_HASH
+        sync: false
+      - key: TG_PHONE
+        sync: false
+      - key: TG_SESSION_STRING
+        sync: false
+      - key: TARGET_GROUP_NAME
+        value: Premium Membership Group
+      - key: FORWARD_TO_USERNAME
+        value: "@V_C_0_3"
+      - key: FALLBACK_COPY_ON_RESTRICTED
+        value: "true"
+      - key: ADMIN_PASSWORD
+        generateValue: true
+      - key: SECRET_KEY
+        generateValue: true
+      - key: LOG_LEVEL
+        value: INFO
