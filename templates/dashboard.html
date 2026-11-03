@@ -1,163 +1,67 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard • Telegram Forwarder{% endblock %}
+{% block title %}Telegram Service Gate{% endblock %}
 
 {% block content %}
-<div class="dashboard-grid">
-    <!-- Top Row: Service Status & Configuration Summary -->
-    <div class="card status-card">
-        <div class="card-header">
-            <h3>📡 Telegram Account Status</h3>
-            <div id="connection-badge">
-                {% if status.is_authorized %}
-                <span class="badge badge-success">● Connected</span>
-                {% elif status.state == 'PENDING_CODE' %}
-                <span class="badge badge-warning">● Awaiting Verification Code</span>
-                {% elif status.state == 'PENDING_PASSWORD' %}
-                <span class="badge badge-warning">● Awaiting 2FA Password</span>
-                {% else %}
-                <span class="badge badge-danger">● Disconnected</span>
-                {% endif %}
+<div class="auth-wrapper">
+    <div class="card auth-card">
+        {% if status.is_authorized %}
+        <div class="auth-header">
+            <div class="auth-lock-icon">✅</div>
+            <h2>Service Active & Forwarding</h2>
+            <p class="text-muted">Telegram account is connected and forwarding incoming messages.</p>
+            <div class="mt-3">
+                <span class="badge badge-success">● Running</span>
             </div>
         </div>
+        <div class="mt-4 text-center">
+            <button id="btn-logout" class="btn btn-outline btn-sm">Disconnect Session</button>
+        </div>
+        {% else %}
+        <div class="auth-header">
+            <div class="auth-lock-icon">🔒</div>
+            <h2>Telegram Authentication</h2>
+            <p class="text-muted">Complete the one-time login for your deployment.</p>
+        </div>
 
-        <div class="card-body">
-            {% if not status.has_credentials %}
-            <div class="alert alert-danger">
-                <strong>Missing API Credentials:</strong> Please set <code>TG_API_ID</code> and <code>TG_API_HASH</code> in your Render environment variables or <code>.env</code> file.
-            </div>
-            {% endif %}
+        {% if not status.has_credentials %}
+        <div class="alert alert-danger">
+            Missing TG_API_ID or TG_API_HASH in Render environment variables.
+        </div>
+        {% endif %}
 
-            <!-- If Connected: Account Details -->
-            <div id="account-details-view" class="{% if not status.is_authorized %}hidden{% endif %}">
-                <div class="profile-card">
-                    <div class="profile-avatar">👤</div>
-                    <div class="profile-info">
-                        <h4 id="user-fullname">{{ status.user.first_name if status.user else '' }} {{ status.user.last_name or '' }}</h4>
-                        <p class="text-muted" id="user-handle">@{{ status.user.username if status.user and status.user.username else 'no_username' }}</p>
-                        <p class="text-muted" id="user-phone">Phone: {{ status.user.phone if status.user else 'N/A' }} | ID: {{ status.user.id if status.user else 'N/A' }}</p>
-                    </div>
-                    <div class="profile-actions">
-                        <button id="btn-logout" class="btn btn-danger btn-sm">Disconnect Account</button>
-                    </div>
-                </div>
-
-                <!-- Session String Card for Render Persistence -->
-                <div class="session-box mt-4">
-                    <div class="session-header">
-                        <h5>🔑 Render Zero-Downtime Session String</h5>
-                        <button id="btn-copy-session" class="btn btn-secondary btn-sm">Copy StringSession</button>
-                    </div>
-                    <p class="text-sm text-muted">
-                        Copy this token and add it to your <strong>Render Dashboard → Environment Variables</strong> as <code>TG_SESSION_STRING</code>. This allows the service to stay logged in permanently across container restarts without needing a persistent disk!
-                    </p>
-                    <textarea id="session-string-input" class="session-textarea" readonly>{{ status.session_string or '' }}</textarea>
+        <div id="login-wizard-view">
+            <!-- Step 1: Phone -->
+            <div id="step-phone" class="wizard-step {% if status.state != 'NOT_AUTHORIZED' and status.state != 'MISSING_CREDENTIALS' %}hidden{% endif %}">
+                <label class="text-muted text-sm">Phone Number</label>
+                <div class="input-group mt-2">
+                    <input type="text" id="phone-input" class="form-input" placeholder="+1234567890" autofocus>
+                    <button id="btn-send-code" class="btn btn-primary">Send Code</button>
                 </div>
             </div>
 
-            <!-- If Not Connected: Browser Login Wizard -->
-            <div id="login-wizard-view" class="{% if status.is_authorized %}hidden{% endif %}">
-                <div class="wizard-steps">
-                    <!-- Step 1: Phone Input -->
-                    <div id="step-phone" class="wizard-step {% if status.state != 'NOT_AUTHORIZED' and status.state != 'MISSING_CREDENTIALS' %}hidden{% endif %}">
-                        <h4>Step 1: Enter Your Telegram Phone Number</h4>
-                        <p class="text-muted">Enter the phone number associated with your Telegram account (including international country code, e.g., <code>+1234567890</code>).</p>
-                        <div class="input-group mt-3">
-                            <input type="text" id="phone-input" class="form-input" placeholder="+1234567890" value="{{ settings.TG_PHONE or '' }}">
-                            <button id="btn-send-code" class="btn btn-primary">Request Code</button>
-                        </div>
-                    </div>
-
-                    <!-- Step 2: Verification Code Input -->
-                    <div id="step-code" class="wizard-step {% if status.state != 'PENDING_CODE' %}hidden{% endif %}">
-                        <h4>Step 2: Enter Telegram Verification Code</h4>
-                        <p class="text-muted">Enter the 5-digit code Telegram just sent to your official Telegram app or SMS.</p>
-                        <div class="input-group mt-3">
-                            <input type="text" id="code-input" class="form-input" placeholder="12345" autocomplete="off">
-                            <button id="btn-verify-code" class="btn btn-primary">Verify Code</button>
-                        </div>
-                        <button id="btn-back-to-phone" class="btn btn-link mt-2">← Change Phone Number</button>
-                    </div>
-
-                    <!-- Step 3: 2FA Password Input (Optional) -->
-                    <div id="step-password" class="wizard-step {% if status.state != 'PENDING_PASSWORD' %}hidden{% endif %}">
-                        <h4>Step 3: Two-Factor Authentication (Cloud Password)</h4>
-                        <p class="text-muted">Your Telegram account has 2-Step Verification enabled. Enter your Cloud Password below.</p>
-                        <div class="input-group mt-3">
-                            <input type="password" id="password-input" class="form-input" placeholder="Enter your 2FA password">
-                            <button id="btn-submit-password" class="btn btn-primary">Submit 2FA</button>
-                        </div>
-                    </div>
+            <!-- Step 2: Code -->
+            <div id="step-code" class="wizard-step {% if status.state != 'PENDING_CODE' %}hidden{% endif %}">
+                <label class="text-muted text-sm">Telegram Verification Code</label>
+                <div class="input-group mt-2">
+                    <input type="text" id="code-input" class="form-input" placeholder="12345" autocomplete="off">
+                    <button id="btn-verify-code" class="btn btn-primary">Verify</button>
                 </div>
-
-                <div id="wizard-feedback" class="alert mt-3 hidden"></div>
+                <button id="btn-back-to-phone" class="btn btn-link mt-2">← Back</button>
             </div>
-        </div>
-    </div>
 
-    <!-- Configuration Card -->
-    <div class="card config-card">
-        <div class="card-header">
-            <h3>⚙️ Forwarding Configuration</h3>
-        </div>
-        <div class="card-body">
-            <ul class="config-list">
-                <li>
-                    <span class="config-label">Source Group:</span>
-                    <span class="config-value badge badge-info">{{ settings.TARGET_GROUP_NAME }}</span>
-                </li>
-                <li>
-                    <span class="config-label">Recipient User:</span>
-                    <span class="config-value badge badge-success">{{ settings.FORWARD_TO_USERNAME }}</span>
-                </li>
-                <li>
-                    <span class="config-label">Forwarding Method:</span>
-                    <span class="config-value">Exact Forward (Telethon forward_messages)</span>
-                </li>
-                <li>
-                    <span class="config-label">No-Forwards Fallback:</span>
-                    <span class="config-value badge badge-warning">{{ 'Active (Copies protected content)' if settings.FALLBACK_COPY_ON_RESTRICTED else 'Disabled' }}</span>
-                </li>
-                <li>
-                    <span class="config-label">Session Engine:</span>
-                    <span class="config-value">{{ 'StringSession (In-Memory/Env)' if settings.TG_SESSION_STRING else 'SQLite File (' ~ settings.TG_SESSION_NAME ~ ')' }}</span>
-                </li>
-            </ul>
-        </div>
-    </div>
+            <!-- Step 3: 2FA Password -->
+            <div id="step-password" class="wizard-step {% if status.state != 'PENDING_PASSWORD' %}hidden{% endif %}">
+                <label class="text-muted text-sm">Two-Step Verification Password</label>
+                <div class="input-group mt-2">
+                    <input type="password" id="password-input" class="form-input" placeholder="Enter Cloud Password">
+                    <button id="btn-submit-password" class="btn btn-primary">Submit</button>
+                </div>
+            </div>
 
-    <!-- Bottom Section: Live Activity Log -->
-    <div class="card logs-card full-width">
-        <div class="card-header">
-            <h3>📋 Live Activity & Audit Logs</h3>
-            <button id="btn-refresh-logs" class="btn btn-outline btn-sm">Refresh Logs</button>
+            <div id="wizard-feedback" class="alert mt-3 hidden"></div>
         </div>
-        <div class="card-body table-responsive">
-            <table class="logs-table">
-                <thead>
-                    <tr>
-                        <th>Time (UTC)</th>
-                        <th>Type</th>
-                        <th>Status</th>
-                        <th>Details</th>
-                    </tr>
-                </thead>
-                <tbody id="logs-body">
-                    {% for log in logs %}
-                    <tr>
-                        <td class="text-muted">{{ log.timestamp[11:19] }}</td>
-                        <td><code>{{ log.event_type }}</code></td>
-                        <td><span class="status-pill status-{{ log.status }}">{{ log.status }}</span></td>
-                        <td>{{ log.details }}</td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="4" class="text-center text-muted">No activity recorded yet. Forwarding events will appear here in real time.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

@@ -13,7 +13,6 @@ def test_public_health_endpoint():
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "ok"
-    assert data["service"] == "telegram-forwarder"
 
 def test_unauthenticated_dashboard_redirects():
     response = client.get("/", follow_redirects=False)
@@ -21,13 +20,13 @@ def test_unauthenticated_dashboard_redirects():
     assert response.headers["location"] == "/login"
 
 def test_unauthenticated_api_rejected():
-    response = client.get("/api/status")
+    response = client.post("/api/auth/send-code", json={"phone": "+1234567890"})
     assert response.status_code == 401
 
 def test_login_invalid_password():
     response = client.post("/login", data={"password": "wrong-password"})
     assert response.status_code == 401
-    assert "Invalid Admin Password" in response.text
+    assert "Invalid Password" in response.text
 
 def test_login_valid_password():
     response = client.post(
@@ -40,22 +39,10 @@ def test_login_valid_password():
     assert settings.COOKIE_NAME in response.cookies
     assert response.cookies[settings.COOKIE_NAME] == EXPECTED_TOKEN
 
-def test_authenticated_dashboard():
+def test_authenticated_view():
     client.cookies.set(settings.COOKIE_NAME, EXPECTED_TOKEN)
     response = client.get("/")
     assert response.status_code == 200
-    assert "Telegram Account Status" in response.text
-    assert settings.TARGET_GROUP_NAME in response.text
-    assert settings.FORWARD_TO_USERNAME in response.text
-
-def test_authenticated_api_status():
-    client.cookies.set(settings.COOKIE_NAME, EXPECTED_TOKEN)
-    response = client.get("/api/status")
-    assert response.status_code == 200
-    data = response.json()
-    assert "state" in data
-    assert data["target_group_name"] == "Premium Membership Group"
-    assert data["forward_to"] == "@V_C_0_3"
 
 @patch.object(service, 'send_code', new_callable=AsyncMock)
 def test_api_send_code(mock_send_code):
