@@ -7,8 +7,8 @@
     <div class="card auth-card">
         <div class="auth-header">
             <div class="auth-lock-icon">🔒</div>
-            <h2>Admin Dashboard Login</h2>
-            <p class="text-muted">Enter your configured ADMIN_PASSWORD to access the service and manage your Telegram session.</p>
+            <h2>Service Authentication</h2>
+            <p class="text-muted">Enter your configured password to access the authentication gate.</p>
         </div>
 
         {% if error %}
@@ -19,18 +19,18 @@
 
         <form method="POST" action="/login" class="auth-form">
             <div class="form-group">
-                <label for="password">Admin Password</label>
+                <label for="password">Access Password</label>
                 <input 
                     type="password" 
                     id="password" 
                     name="password" 
                     class="form-input" 
-                    placeholder="Enter your admin password" 
+                    placeholder="Enter password" 
                     required 
                     autofocus
                 >
             </div>
-            <button type="submit" class="btn btn-primary btn-block">Unlock Dashboard</button>
+            <button type="submit" class="btn btn-primary btn-block">Unlock</button>
         </form>
 
         <div class="auth-note">
