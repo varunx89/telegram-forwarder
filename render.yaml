@@ -8,8 +8,12 @@ services:
     healthCheckPath: /health
     autoDeploy: true
     envVars:
+      - key: HOST
+        value: "::"
       - key: PORT
         value: 10000
+      - key: USE_IPV6
+        value: "true"
       - key: TG_API_ID
         sync: false
       - key: TG_API_HASH
@@ -19,7 +23,7 @@ services:
       - key: TARGET_GROUP_NAME
         value: Premium Membership Group
       - key: FORWARD_TO_USERNAME
-        value: "@V_C_0_3"
+        sync: false
       - key: FALLBACK_COPY_ON_RESTRICTED
         value: "true"
       - key: LOG_LEVEL
